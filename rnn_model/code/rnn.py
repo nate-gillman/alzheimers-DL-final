@@ -78,6 +78,7 @@ def train(model : Model, train_inputs, train_labels, epoch):
     num_batches = len(train_labels)
     total_avg_loss = 0
 
+    num_correct, num_preds = 0, 0
     for batch_no in range(num_batches):
 
         train_input = train_inputs[batch_no]
@@ -85,6 +86,11 @@ def train(model : Model, train_inputs, train_labels, epoch):
 
         with tf.GradientTape() as tape:
             probs = model.call(train_input)
+
+            if bool(tf.math.argmax(probs[0])==train_label):
+                num_correct += 1
+            num_preds += 1
+
             avg_loss = model.loss(probs, train_label)
 
         total_avg_loss += avg_loss
@@ -94,12 +100,14 @@ def train(model : Model, train_inputs, train_labels, epoch):
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
 
-        if batch_no > 0 and batch_no % 10 == 0:
+        if batch_no > 0 and batch_no % 10 == 0 and False:
             print(f"total avg loss after epoch {epoch}, sentence {batch_no} is {total_avg_loss/(batch_no+1)}")
             sys.stdout.flush()
 
+    avg_loss = float(total_avg_loss / (num_batches + 1))
+    training_acc = num_correct / num_preds
 
-    return total_avg_loss / (num_batches + 1)
+    return avg_loss, training_acc
 
 
 def test(model, test_inputs, test_labels):
@@ -159,26 +167,34 @@ def main():
     rnn_model = Model(vocab_size)
 
     # STEP 4: Train the model!!
-    NUM_EPOCHS = 20
-    avg_losses, accuracies, zero_proportions = [], [], []
+    NUM_EPOCHS = 10
+    avg_losses, training_accs = [], []
     for epoch in range(NUM_EPOCHS):
-        avg_loss = train(rnn_model, train_desc, train_diag, epoch)
+        avg_loss, training_acc = train(rnn_model, train_desc, train_diag, epoch)
         avg_losses.append(avg_loss)
+        training_accs.append(training_acc)
 
         # STEP 5: Compute accuracy after every training epoch!!
-        accuracy, zero_proportion = test(rnn_model, test_desc, test_diag)
-        print(f"Accuracy after epoch {epoch} is {accuracy}.")
-        print(f"After this epoch, the model predicted 0 with proportion {zero_proportion}")
-        accuracies.append(accuracy)
-        zero_proportions.append(zero_proportion)
+        #accuracy_test, zero_proportion_test = test(rnn_model, test_desc, test_diag)
+        #accuracy_train, zero_proportion_train = test(rnn_model, train_desc, train_diag)
+        #print(f"Testing accuracy after epoch {epoch} is {accuracy_test}.")
+        #print(f"Training accuracy after epoch {epoch} is {accuracy_train}.")
+        #print(f"After this epoch, the model predicted 0 on train with proportion {zero_proportion_train}")
+        #test_accuracies.append(accuracy_test)
+        #train_accuracies.append(accuracy_train)
+        #zero_proportions.append(zero_proportion)
+
+    accuracy_test, _ = test(rnn_model, test_desc, test_diag)
+    print("Test accuracy after last epoch: ", accuracy_test)
 
     print("\n------------------------------------------------")
     print("------  Done with training and testing!!! ------")
     print("------------------------------------------------\n")
 
     print("avg_losses = ", str(avg_losses))
-    print("accuracies = ", str(accuracies))
-    print("zero_proportions = ", str(zero_proportions))
+    #print("test_accuracies = ", str(accuracies))
+    print("train_accuracies = ", str(training_accs))
+    #print("zero_proportions = ", str(zero_proportions))
 
     return None
     
